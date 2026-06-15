@@ -15,6 +15,8 @@
   width: 90%; max-width: 520px; max-height: 90vh;
   overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
   animation: modalIn 0.25s ease;
+  /* Prevent modal from going off-screen on small devices */
+  margin: 1rem;
 }
 .modal-lg { max-width: 680px; }
 @keyframes modalIn { from { transform: translateY(20px) scale(0.97); opacity: 0; } }
@@ -290,21 +292,57 @@ input[type="range"] { width: 100%; accent-color: var(--purple-500); cursor: poin
 .journal-section h4 { font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.3rem; }
 .journal-section p  { font-size: 0.85rem; line-height: 1.55; color: var(--text-primary); }
 
-/* ============ MOBILE RESPONSIVE ============ */
+/* ============================================================
+   RESPONSIVE BREAKPOINTS
+   1. Tablet landscape  : max-width 1024px
+   2. Tablet portrait   : max-width 900px
+   3. Mobile            : max-width 768px
+   4. Small phones      : max-width 480px
+   ============================================================ */
+
 .sidebar-overlay { display: none; }
 
-@media (max-width: 900px) {
-  .dashboard-grid { grid-template-columns: 1fr; }
-  .info-row { grid-template-columns: 1fr; }
+/* ── 1. Tablet landscape (1024px) ──────────────────────────── */
+@media (max-width: 1024px) {
+  :root { --sidebar-w: 210px; }
+  .main-content { padding: 1.5rem; }
+  .summary-cards { grid-template-columns: repeat(3, 1fr); }
+  .dashboard-grid { grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .info-row { grid-template-columns: 1fr 1fr; }
+  .reports-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .page-title { font-size: 1.35rem; }
 }
 
+/* ── 2. Tablet portrait (900px) ────────────────────────────── */
+@media (max-width: 900px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .info-row { grid-template-columns: 1fr 1fr; }
+  .chart-body canvas { max-height: 220px; }
+}
+
+/* ── 3. Mobile (768px) ─────────────────────────────────────── */
 @media (max-width: 768px) {
+  /* Sidebar: slide-in drawer */
   .sidebar {
     transform: translateX(-100%);
     z-index: 500;
+    width: var(--sidebar-w, 240px);
   }
-  .sidebar.open { transform: none; }
+  .sidebar.open { transform: none; box-shadow: 4px 0 24px rgba(0,0,0,0.4); }
+
+  /* Overlay behind open sidebar */
+  .sidebar-overlay {
+    display: block; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 499;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--transition);
+  }
+  .sidebar-overlay.active { opacity: 1; pointer-events: all; }
+
+  /* Main content shifts up to make room for mobile header */
   .main-content { margin-left: 0; padding: 1rem; padding-top: 4.5rem; }
+
+  /* Mobile top bar */
   .mobile-header {
     display: flex; align-items: center; gap: 0.75rem;
     position: fixed; top: 0; left: 0; right: 0; z-index: 400;
@@ -314,14 +352,118 @@ input[type="range"] { width: 100%; accent-color: var(--purple-500); cursor: poin
   .menu-toggle { background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; }
   .mobile-logo { display: flex; align-items: center; gap: 0.5rem; color: #fff; font-weight: 700; font-size: 0.95rem; }
   .mobile-logo i { color: var(--teal-400); }
-  .sidebar-overlay { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 499; opacity: 0; pointer-events: none; transition: opacity var(--transition); }
-  .sidebar-overlay.active { opacity: 1; pointer-events: all; }
-  .summary-cards { grid-template-columns: repeat(2, 1fr); }
+
+  /* Page header: stack title + button vertically */
+  .page-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+  .page-title { font-size: 1.25rem; }
+
+  /* Grids */
+  .summary-cards { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+  .info-row { grid-template-columns: 1fr; }
+  .reports-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+
+  /* Forms */
   .form-row, .form-row-3, .form-row-4 { grid-template-columns: 1fr; }
-  .journal-metrics-grid { grid-template-columns: 1fr; }
+
+  /* Charts */
+  .chart-body { padding: 0.75rem; }
+  .chart-body canvas { max-height: 200px; }
+
+  /* Modals: bottom sheet on mobile */
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal {
+    width: 100%; max-width: 100%;
+    border-radius: var(--radius) var(--radius) 0 0;
+    max-height: 85vh;
+    margin: 0;
+    animation: slideUp 0.3s ease;
+  }
+  .modal-lg { max-width: 100%; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+  /* Journal */
+  .journal-metrics-grid { grid-template-columns: 1fr 1fr; }
   .journal-card { flex-direction: column; }
-  .journal-card-date { flex-direction: row; justify-content: flex-start; gap: 0.5rem; padding: 0.75rem 1rem; }
+  .journal-card-date {
+    flex-direction: row; justify-content: flex-start;
+    gap: 0.5rem; padding: 0.75rem 1rem;
+  }
+
+  /* Medications */
   .med-card { flex-direction: column; }
+  .med-card-right { flex-direction: row; align-items: center; justify-content: space-between; }
+
+  /* Timeline */
+  .timeline-card-header { flex-wrap: wrap; }
+
+  /* Filter bar wraps nicely */
+  .filter-bar { gap: 0.4rem; }
+  .filter-chip { font-size: 0.75rem; padding: 0.3rem 0.7rem; }
+
+  /* Category cards wrap */
+  .category-cards { gap: 0.5rem; }
+  .category-card { min-width: 100px; padding: 0.75rem 0.9rem; }
+
+  /* Med status cards */
+  .med-status-cards { gap: 0.5rem; }
+  .med-status-card { min-width: 90px; padding: 0.75rem 1rem; }
+
+  /* Table actions don't wrap */
+  .table-actions { flex-wrap: nowrap; }
+
+  /* Flash messages full width */
+  .flash-message { font-size: 0.82rem; }
+}
+
+/* ── 4. Small phones (480px) ───────────────────────────────── */
+@media (max-width: 480px) {
+  .main-content { padding: 0.75rem; padding-top: 4rem; }
+
+  /* Single column for cards */
+  .summary-cards { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .summary-card { padding: 0.9rem; }
+  .card-value { font-size: 1.4rem; }
+  .card-icon { width: 40px; height: 40px; font-size: 1.1rem; }
+
+  /* Page title */
+  .page-title { font-size: 1.1rem; }
+  .page-subtitle { font-size: 0.8rem; }
+
+  /* Reports grid: single column */
+  .reports-grid { grid-template-columns: 1fr; }
+
+  /* Journal metrics: single column */
+  .journal-metrics-grid { grid-template-columns: 1fr; }
+
+  /* Timeline: tighten up */
+  .timeline-marker { width: 34px; height: 34px; font-size: 0.78rem; }
+  .timeline-item::before { left: 16px; }
+
+  /* Modals: more height on very small screens */
+  .modal { max-height: 92vh; }
+  .modal-body { padding: 1rem; }
+  .modal-header { padding: 0.9rem 1rem; }
+  .modal-footer { padding: 0.75rem 1rem; }
+
+  /* Buttons tighter */
+  .btn { padding: 0.5rem 1rem; font-size: 0.82rem; }
+  .btn-sm { padding: 0.28rem 0.6rem; font-size: 0.75rem; }
+
+  /* Charts: smaller */
+  .chart-body canvas { max-height: 160px; }
+
+  /* Filter chips: smaller */
+  .filter-chip { font-size: 0.72rem; padding: 0.25rem 0.6rem; }
+
+  /* Category/status cards: 2-col wrap */
+  .category-cards, .med-status-cards { display: grid; grid-template-columns: 1fr 1fr; }
+  .category-card, .med-status-card { min-width: unset; }
+
+  /* Med card details — wrap on tiny screens */
+  .med-card-details, .med-card-dates { gap: 0.4rem; }
+
+  /* Sidebar narrow on tiny phones */
+  .sidebar { width: min(240px, 85vw); }
 }
 
 /* ---------- Design Tokens ---------- */
