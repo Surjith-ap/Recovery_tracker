@@ -16,4 +16,4 @@ class Config:
     ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png'}
 
     # Diagnosis date - update this to your actual diagnosis date
-    DIAGNOSIS_DATE = '2025-05-01'
+    DIAGNOSIS_DATE = '2026-05-06'
