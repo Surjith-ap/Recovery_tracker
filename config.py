@@ -17,3 +17,8 @@ class Config:
 
     # Diagnosis date - update this to your actual diagnosis date
     DIAGNOSIS_DATE = '2026-05-06'
+
+    # Admin credentials — set these in your .env file
+    # Generate hash: python setup_password.py
+    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+    ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '')

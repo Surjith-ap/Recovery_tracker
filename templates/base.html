@@ -69,6 +69,11 @@
         </nav>
 
         <div class="sidebar-footer">
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn" id="logoutBtn"
+               title="Sign out">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Sign Out</span>
+            </a>
             <div class="recovery-badge">
                 <i class="fa-solid fa-seedling"></i>
                 <span>Stay Strong</span>
