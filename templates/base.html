@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Personal Jaundice Recovery Tracker — Track treatment, tests, medications, and recovery progress">
+    <title>{% block title %}Recovery Tracker{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-heart-pulse"></i>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-title">RecoveryTracker</span>
+                    <span class="logo-subtitle">Jaundice Recovery</span>
+                </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <ul>
+                <li>
+                    <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" id="nav-dashboard">
+                        <i class="fa-solid fa-grid-2"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('timeline.index') }}" class="nav-link {% if request.endpoint and 'timeline' in request.endpoint %}active{% endif %}" id="nav-timeline">
+                        <i class="fa-solid fa-timeline"></i>
+                        <span>Timeline</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('lab_results.index') }}" class="nav-link {% if request.endpoint and 'lab_results' in request.endpoint %}active{% endif %}" id="nav-lab-results">
+                        <i class="fa-solid fa-flask-vial"></i>
+                        <span>Lab Results</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('reports.index') }}" class="nav-link {% if request.endpoint and 'reports' in request.endpoint %}active{% endif %}" id="nav-reports">
+                        <i class="fa-solid fa-file-medical"></i>
+                        <span>Reports</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('medications.index') }}" class="nav-link {% if request.endpoint and 'medications' in request.endpoint %}active{% endif %}" id="nav-medications">
+                        <i class="fa-solid fa-capsules"></i>
+                        <span>Medications</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('journal.index') }}" class="nav-link {% if request.endpoint and 'journal' in request.endpoint %}active{% endif %}" id="nav-journal">
+                        <i class="fa-solid fa-book-medical"></i>
+                        <span>Journal</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="recovery-badge">
+                <i class="fa-solid fa-seedling"></i>
+                <span>Stay Strong</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="mobile-logo">
+            <i class="fa-solid fa-heart-pulse"></i>
+            <span>RecoveryTracker</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-container" id="flashContainer">
+            {% for category, message in messages %}
+            <div class="flash-message flash-{{ category }}">
+                <i class="fa-solid {% if category == 'success' %}fa-check-circle{% elif category == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                <span>{{ message }}</span>
+                <button class="flash-close" onclick="this.parentElement.remove()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Overlay for mobile sidebar -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        // Auto-dismiss flash messages after 4 seconds
+        setTimeout(() => {
+            document.querySelectorAll('.flash-message').forEach(msg => {
+                msg.style.animation = 'slideOutRight 0.3s ease forwards';
+                setTimeout(() => msg.remove(), 300);
+            });
+        }, 4000);
+    </script>
+    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

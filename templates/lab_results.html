@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% block title %}Lab Results — Recovery Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Lab Results</h1>
+        <p class="page-subtitle">Track and monitor your medical test results</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('addResultModal')">
+        <i class="fa-solid fa-plus"></i> Add Result
+    </button>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+    <a href="{{ url_for('lab_results.index', test='all') }}" class="filter-chip {% if current_filter == 'all' %}active{% endif %}">All Tests</a>
+    {% for name in test_names_in_db %}
+    <a href="{{ url_for('lab_results.index', test=name) }}" class="filter-chip {% if current_filter == name %}active{% endif %}">{{ name }}</a>
+    {% endfor %}
+</div>
+
+<!-- Trend Chart -->
+<div class="chart-card wide" style="margin-bottom: 1.5rem;">
+    <div class="chart-header">
+        <h3><i class="fa-solid fa-chart-line"></i> Test Value Trends</h3>
+        <select id="trendTestSelect" class="filter-select" onchange="loadTrendData(this.value)">
+            <option value="Total Bilirubin">Total Bilirubin</option>
+            <option value="SGPT">SGPT (ALT)</option>
+            <option value="SGOT">SGOT (AST)</option>
+            <option value="Alkaline Phosphatase">Alkaline Phosphatase</option>
+        </select>
+    </div>
+    <div class="chart-body">
+        <canvas id="labTrendChart" height="250"></canvas>
+        <div class="empty-chart" id="emptyTrendChart" style="display:none;">
+            <i class="fa-solid fa-chart-area"></i>
+            <p>No data for this test. Add results to see trends.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Results Table -->
+<div class="table-card">
+    <div class="table-responsive">
+        <table class="data-table" id="labResultsTable">
+            <thead>
+                <tr>
+                    <th>Test Name</th>
+                    <th>Date</th>
+                    <th>Result</th>
+                    <th>Normal Range</th>
+                    <th>Status</th>
+                    <th>Doctor Notes</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if results %}
+                    {% for result in results %}
+                    <tr>
+                        <td><strong>{{ result.test_name }}</strong></td>
+                        <td>{{ result.test_date.strftime('%b %d, %Y') }}</td>
+                        <td>
+                            <span class="result-value">{{ result.result_value or '—' }}</span>
+                            <span class="result-unit">{{ result.result_unit or '' }}</span>
+                        </td>
+                        <td>{{ result.normal_range or '—' }}</td>
+                        <td>
+                            {% if result.status %}
+                            <span class="status-badge status-{{ result.status }}">{{ result.status.title() }}</span>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td class="notes-cell">{{ (result.doctor_notes or '—')[:50] }}{% if result.doctor_notes and result.doctor_notes|length > 50 %}...{% endif %}</td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn-icon" onclick="openEditResultModal({{ result.id }}, '{{ result.test_name }}', '{{ result.test_date }}', '{{ result.result_value or '' }}', '{{ result.result_unit or '' }}', '{{ result.normal_range or '' }}', '{{ result.status or '' }}', `{{ result.doctor_notes or '' }}`, `{{ result.followup_recommendations or '' }}`)">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <form method="POST" action="{{ url_for('lab_results.delete_result', result_id=result.id) }}" class="inline-form" onsubmit="return confirm('Delete this result?')">
+                                    <button type="submit" class="btn-icon danger"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="empty-table">
+                            <div class="empty-state-small">
+                                <i class="fa-solid fa-flask-vial"></i>
+                                <p>No lab results recorded yet</p>
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Result Modal -->
+<div class="modal-overlay" id="addResultModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-plus-circle"></i> Add Lab Result</h2>
+            <button class="modal-close" onclick="closeModal('addResultModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="POST" action="{{ url_for('lab_results.add_result') }}">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="test_name">Test Name *</label>
+                        <select id="test_name" name="test_name" required onchange="toggleCustomTest(this)">
+                            {% for name in test_names %}
+                            <option value="{{ name }}">{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" id="customTestGroup" style="display:none;">
+                        <label for="custom_test_name">Custom Test Name</label>
+                        <input type="text" id="custom_test_name" name="custom_test_name" placeholder="Enter test name">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="test_date">Test Date *</label>
+                        <input type="date" id="test_date" name="test_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="status">Status</label>
+                        <select id="status" name="status">
+                            <option value="">Select</option>
+                            {% for key, label in result_statuses %}
+                            <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label for="result_value">Result Value</label>
+                        <input type="text" id="result_value" name="result_value" placeholder="e.g., 2.5">
+                    </div>
+                    <div class="form-group">
+                        <label for="result_unit">Unit</label>
+                        <input type="text" id="result_unit" name="result_unit" placeholder="e.g., mg/dL">
+                    </div>
+                    <div class="form-group">
+                        <label for="normal_range">Normal Range</label>
+                        <input type="text" id="normal_range" name="normal_range" placeholder="e.g., 0.1-1.2">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="doctor_notes">Doctor Notes</label>
+                    <textarea id="doctor_notes" name="doctor_notes" rows="2" placeholder="Notes from the doctor..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="followup_recommendations">Follow-up Recommendations</label>
+                    <textarea id="followup_recommendations" name="followup_recommendations" rows="2" placeholder="Next steps..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addResultModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Result</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Result Modal -->
+<div class="modal-overlay" id="editResultModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-pen"></i> Edit Lab Result</h2>
+            <button class="modal-close" onclick="closeModal('editResultModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="POST" id="editResultForm">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Test Name *</label>
+                        <select id="edit_test_name" name="test_name" required>
+                            {% for name in test_names %}
+                            <option value="{{ name }}">{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Test Date *</label>
+                        <input type="date" id="edit_test_date" name="test_date" required>
+                    </div>
+                </div>
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label>Result Value</label>
+                        <input type="text" id="edit_result_value" name="result_value">
+                    </div>
+                    <div class="form-group">
+                        <label>Unit</label>
+                        <input type="text" id="edit_result_unit" name="result_unit">
+                    </div>
+                    <div class="form-group">
+                        <label>Normal Range</label>
+                        <input type="text" id="edit_normal_range" name="normal_range">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="edit_status" name="status">
+                        <option value="">Select</option>
+                        {% for key, label in result_statuses %}
+                        <option value="{{ key }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Doctor Notes</label>
+                    <textarea id="edit_doctor_notes" name="doctor_notes" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Follow-up</label>
+                    <textarea id="edit_followup" name="followup_recommendations" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editResultModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function toggleCustomTest(sel) {
+    document.getElementById('customTestGroup').style.display = sel.value === 'Other' ? 'block' : 'none';
+}
+
+function openEditResultModal(id, name, date, val, unit, range, status, notes, followup) {
+    document.getElementById('editResultForm').action = '/lab-results/edit/' + id;
+    document.getElementById('edit_test_name').value = name;
+    document.getElementById('edit_test_date').value = date;
+    document.getElementById('edit_result_value').value = val;
+    document.getElementById('edit_result_unit').value = unit;
+    document.getElementById('edit_normal_range').value = range;
+    document.getElementById('edit_status').value = status;
+    document.getElementById('edit_doctor_notes').value = notes;
+    document.getElementById('edit_followup').value = followup;
+    openModal('editResultModal');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(o => {
+    o.addEventListener('click', e => { if (e.target === o) o.classList.remove('active'); });
+});
+
+// Load trend chart
+let labChart = null;
+function loadTrendData(testName) {
+    fetch('/lab-results/api/chart-data?test=' + encodeURIComponent(testName))
+        .then(r => r.json())
+        .then(data => {
+            if (data.labels.length === 0) {
+                document.getElementById('labTrendChart').style.display = 'none';
+                document.getElementById('emptyTrendChart').style.display = 'flex';
+                return;
+            }
+            document.getElementById('labTrendChart').style.display = 'block';
+            document.getElementById('emptyTrendChart').style.display = 'none';
+            if (labChart) labChart.destroy();
+            labChart = initLabTrendChart('labTrendChart', data.labels, data.values, data.test_name);
+        });
+}
+loadTrendData('Total Bilirubin');
+</script>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Reports — Recovery Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Medical Reports</h1>
+        <p class="page-subtitle">Upload, organize, and manage your medical documents</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('uploadReportModal')">
+        <i class="fa-solid fa-cloud-arrow-up"></i> Upload Report
+    </button>
+</div>
+
+<!-- Category Cards -->
+<div class="category-cards">
+    {% for cat_key, cat_label in categories %}
+    <a href="{{ url_for('reports.index', category=cat_key) }}" class="category-card {% if current_filter == cat_key %}active{% endif %}">
+        <div class="cat-icon" style="color: {{ category_config[cat_key].color }}">
+            <i class="fa-solid {{ category_config[cat_key].icon }}"></i>
+        </div>
+        <span class="cat-label">{{ cat_label }}</span>
+        <span class="cat-count">{{ category_counts.get(cat_key, 0) }}</span>
+    </a>
+    {% endfor %}
+    <a href="{{ url_for('reports.index', category='all') }}" class="category-card {% if current_filter == 'all' %}active{% endif %}">
+        <div class="cat-icon" style="color: #6C5CE7"><i class="fa-solid fa-layer-group"></i></div>
+        <span class="cat-label">All Reports</span>
+        <span class="cat-count">{{ reports|length }}</span>
+    </a>
+</div>
+
+<!-- Reports Grid -->
+<div class="reports-grid">
+    {% if reports %}
+        {% for report in reports %}
+        <div class="report-card">
+            <div class="report-card-top">
+                <div class="report-file-icon {% if report.file_type == 'pdf' %}pdf{% else %}img{% endif %}">
+                    {% if report.file_type == 'pdf' %}
+                    <i class="fa-solid fa-file-pdf"></i>
+                    {% else %}
+                    <i class="fa-solid fa-file-image"></i>
+                    {% endif %}
+                </div>
+                <div class="report-actions">
+                    <a href="{{ url_for('reports.view_report', report_id=report.id) }}" target="_blank" class="btn-icon" title="Preview">
+                        <i class="fa-solid fa-eye"></i>
+                    </a>
+                    <a href="{{ url_for('reports.download_report', report_id=report.id) }}" class="btn-icon" title="Download">
+                        <i class="fa-solid fa-download"></i>
+                    </a>
+                    <form method="POST" action="{{ url_for('reports.delete_report', report_id=report.id) }}" class="inline-form" onsubmit="return confirm('Delete this report?')">
+                        <button type="submit" class="btn-icon danger" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                </div>
+            </div>
+            <div class="report-card-body">
+                <h4 class="report-title">{{ report.title }}</h4>
+                <span class="report-category-badge" style="color: {{ category_config.get(report.category, {}).get('color', '#6C5CE7') }}">
+                    <i class="fa-solid {{ category_config.get(report.category, {}).get('icon', 'fa-file') }}"></i>
+                    {{ dict(categories).get(report.category, report.category) }}
+                </span>
+                <div class="report-meta">
+                    <span><i class="fa-regular fa-calendar"></i> {{ report.report_date.strftime('%b %d, %Y') }}</span>
+                    <span><i class="fa-solid fa-file"></i> {{ report.file_type.upper() }} · {{ get_file_size_str(report.file_size) if report.file_size else 'N/A' }}</span>
+                </div>
+                {% if report.notes %}
+                <p class="report-notes">{{ report.notes[:80] }}{% if report.notes|length > 80 %}...{% endif %}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state" style="grid-column: 1 / -1;">
+            <i class="fa-solid fa-file-medical"></i>
+            <h3>No reports uploaded yet</h3>
+            <p>Upload your first medical report to start organizing your documents.</p>
+            <button class="btn btn-primary" onclick="openModal('uploadReportModal')">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Upload Report
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Upload Report Modal -->
+<div class="modal-overlay" id="uploadReportModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-cloud-arrow-up"></i> Upload Report</h2>
+            <button class="modal-close" onclick="closeModal('uploadReportModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="POST" action="{{ url_for('reports.upload_report') }}" enctype="multipart/form-data">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="title">Report Title *</label>
+                    <input type="text" id="title" name="title" placeholder="e.g., LFT Report - June 2025" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="category">Category *</label>
+                        <select id="category" name="category" required>
+                            {% for cat_key, cat_label in categories %}
+                            <option value="{{ cat_key }}">{{ cat_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="report_date">Report Date *</label>
+                        <input type="date" id="report_date" name="report_date" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="report_file">Select File *</label>
+                    <div class="file-upload-area" id="fileUploadArea">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <p>Click to select or drag a file here</p>
+                        <small>PDF, JPG, PNG, JPEG — Max 16MB</small>
+                        <input type="file" id="report_file" name="report_file" accept=".pdf,.jpg,.jpeg,.png" required>
+                    </div>
+                    <span id="selectedFileName" class="selected-file"></span>
+                </div>
+                <div class="form-group">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes" rows="2" placeholder="Optional notes about this report..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('uploadReportModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+    o.addEventListener('click', e => { if (e.target === o) o.classList.remove('active'); });
+});
+
+// File upload area
+const fileInput = document.getElementById('report_file');
+if (fileInput) {
+    fileInput.addEventListener('change', function() {
+        const name = this.files[0]?.name;
+        document.getElementById('selectedFileName').textContent = name ? '📎 ' + name : '';
+    });
+}
+</script>
+{% endblock %}

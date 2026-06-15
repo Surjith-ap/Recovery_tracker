@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Recovery Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Recovery Dashboard</h1>
+        <p class="page-subtitle">Your complete recovery overview at a glance</p>
+    </div>
+    <div class="header-date">
+        <i class="fa-regular fa-calendar"></i>
+        <span>{{ diagnosis_date.strftime('%b %d, %Y') }} — Today</span>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="summary-cards">
+    <div class="summary-card card-purple">
+        <div class="card-icon"><i class="fa-solid fa-calendar-days"></i></div>
+        <div class="card-info">
+            <span class="card-value">{{ days_since_diagnosis }}</span>
+            <span class="card-label">Days Since Diagnosis</span>
+        </div>
+    </div>
+    <div class="summary-card card-teal">
+        <div class="card-icon"><i class="fa-solid fa-user-doctor"></i></div>
+        <div class="card-info">
+            <span class="card-value">{{ total_consultations }}</span>
+            <span class="card-label">Total Consultations</span>
+        </div>
+    </div>
+    <div class="summary-card card-blue">
+        <div class="card-icon"><i class="fa-solid fa-flask-vial"></i></div>
+        <div class="card-info">
+            <span class="card-value">{{ total_tests }}</span>
+            <span class="card-label">Tests Completed</span>
+        </div>
+    </div>
+    <div class="summary-card card-green">
+        <div class="card-icon"><i class="fa-solid fa-capsules"></i></div>
+        <div class="card-info">
+            <span class="card-value">{{ active_medications }}</span>
+            <span class="card-label">Active Medications</span>
+        </div>
+    </div>
+    <div class="summary-card card-amber">
+        <div class="card-icon"><i class="fa-solid fa-file-medical"></i></div>
+        <div class="card-info">
+            <span class="card-value">{{ total_reports }}</span>
+            <span class="card-label">Reports Uploaded</span>
+        </div>
+    </div>
+    <div class="summary-card card-rose">
+        <div class="card-icon"><i class="fa-solid fa-trophy"></i></div>
+        <div class="card-info">
+            <span class="card-value">{{ total_milestones }}</span>
+            <span class="card-label">Milestones Reached</span>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="dashboard-grid">
+    <div class="chart-card wide">
+        <div class="chart-header">
+            <h3><i class="fa-solid fa-chart-line"></i> Bilirubin Trend</h3>
+            <span class="chart-badge">Key Indicator</span>
+        </div>
+        <div class="chart-body">
+            <canvas id="bilirubinChart" height="280"></canvas>
+            {% if not bilirubin_values %}
+            <div class="empty-chart">
+                <i class="fa-solid fa-chart-area"></i>
+                <p>No bilirubin data yet. Add lab results to see trends.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3><i class="fa-solid fa-pills"></i> Active Medications</h3>
+            <a href="{{ url_for('medications.index') }}" class="chart-link">View All →</a>
+        </div>
+        <div class="chart-body med-list">
+            {% if active_meds %}
+                {% for med in active_meds %}
+                <div class="med-item">
+                    <div class="med-icon"><i class="fa-solid fa-capsules"></i></div>
+                    <div class="med-details">
+                        <span class="med-name">{{ med.medicine_name }}</span>
+                        <span class="med-dose">{{ med.dosage }} · {{ med.frequency }}</span>
+                    </div>
+                    <span class="status-badge status-active">Active</span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state-small">
+                    <i class="fa-solid fa-capsules"></i>
+                    <p>No active medications</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity & Latest Info -->
+<div class="dashboard-grid">
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3><i class="fa-solid fa-clock-rotate-left"></i> Recent Activity</h3>
+            <a href="{{ url_for('timeline.index') }}" class="chart-link">View Timeline →</a>
+        </div>
+        <div class="chart-body">
+            {% if recent_events %}
+                <div class="activity-list">
+                {% for event in recent_events %}
+                    <div class="activity-item">
+                        <div class="activity-dot" style="background: var(--purple-500)"></div>
+                        <div class="activity-content">
+                            <span class="activity-title">{{ event.title }}</span>
+                            <span class="activity-meta">
+                                <i class="fa-regular fa-calendar"></i>
+                                {{ event.event_date.strftime('%b %d, %Y') }}
+                            </span>
+                        </div>
+                        <span class="activity-type-badge">{{ event.activity_type.replace('_', ' ').title() }}</span>
+                    </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state-small">
+                    <i class="fa-solid fa-timeline"></i>
+                    <p>No events recorded yet</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3><i class="fa-solid fa-book-open"></i> Recent Journal</h3>
+            <a href="{{ url_for('journal.index') }}" class="chart-link">Write Entry →</a>
+        </div>
+        <div class="chart-body">
+            {% if recent_journals %}
+                {% for entry in recent_journals %}
+                <div class="journal-preview">
+                    <div class="journal-date">
+                        <span class="journal-day">{{ entry.entry_date.strftime('%d') }}</span>
+                        <span class="journal-month">{{ entry.entry_date.strftime('%b') }}</span>
+                    </div>
+                    <div class="journal-content">
+                        {% if entry.symptoms %}
+                        <p class="journal-symptoms"><strong>Symptoms:</strong> {{ entry.symptoms[:80] }}{% if entry.symptoms|length > 80 %}...{% endif %}</p>
+                        {% endif %}
+                        <div class="journal-metrics">
+                            {% if entry.energy_level %}
+                            <span class="metric-pill"><i class="fa-solid fa-bolt"></i> {{ entry.energy_level }}/10</span>
+                            {% endif %}
+                            {% if entry.appetite %}
+                            <span class="metric-pill"><i class="fa-solid fa-utensils"></i> {{ entry.appetite }}/10</span>
+                            {% endif %}
+                            {% if entry.sleep_quality %}
+                            <span class="metric-pill"><i class="fa-solid fa-moon"></i> {{ entry.sleep_quality }}/10</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state-small">
+                    <i class="fa-solid fa-book-medical"></i>
+                    <p>No journal entries yet</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Quick Info Cards Row -->
+<div class="info-row">
+    <div class="info-card">
+        <div class="info-icon purple"><i class="fa-solid fa-droplet"></i></div>
+        <div class="info-body">
+            <span class="info-label">Latest Bilirubin</span>
+            <span class="info-value">
+                {% if latest_bilirubin %}{{ latest_bilirubin.result_value }} {{ latest_bilirubin.result_unit or 'mg/dL' }}{% else %}—{% endif %}
+            </span>
+            <span class="info-date">
+                {% if latest_bilirubin %}{{ latest_bilirubin.test_date.strftime('%b %d, %Y') }}{% else %}No data{% endif %}
+            </span>
+        </div>
+    </div>
+    <div class="info-card">
+        <div class="info-icon teal"><i class="fa-solid fa-calendar-check"></i></div>
+        <div class="info-body">
+            <span class="info-label">Latest Test</span>
+            <span class="info-value">
+                {% if latest_test %}{{ latest_test.test_name }}{% else %}—{% endif %}
+            </span>
+            <span class="info-date">
+                {% if latest_test %}{{ latest_test.test_date.strftime('%b %d, %Y') }}{% else %}No tests{% endif %}
+            </span>
+        </div>
+    </div>
+    <div class="info-card">
+        <div class="info-icon green"><i class="fa-solid fa-stethoscope"></i></div>
+        <div class="info-body">
+            <span class="info-label">Latest Consultation</span>
+            <span class="info-value">
+                {% if latest_consultation %}{{ latest_consultation.title[:30] }}{% else %}—{% endif %}
+            </span>
+            <span class="info-date">
+                {% if latest_consultation %}{{ latest_consultation.event_date.strftime('%b %d, %Y') }}{% else %}No consultations{% endif %}
+            </span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const bilirubinDates = {{ bilirubin_dates | tojson }};
+    const bilirubinValues = {{ bilirubin_values | tojson }};
+
+    if (bilirubinDates.length > 0) {
+        initBilirubinChart(bilirubinDates, bilirubinValues);
+    }
+</script>
+{% endblock %}

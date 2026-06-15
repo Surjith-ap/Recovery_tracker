@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}Medications — Recovery Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Medications</h1>
+        <p class="page-subtitle">Track all your prescribed medicines and supplements</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('addMedModal')">
+        <i class="fa-solid fa-plus"></i> Add Medication
+    </button>
+</div>
+
+<!-- Status Summary -->
+<div class="med-status-cards">
+    <a href="{{ url_for('medications.index', status='active') }}" class="med-status-card {% if current_filter == 'active' %}active{% endif %} card-active-med">
+        <i class="fa-solid fa-circle-check"></i>
+        <span class="med-status-count">{{ active_count }}</span>
+        <span class="med-status-label">Active</span>
+    </a>
+    <a href="{{ url_for('medications.index', status='completed') }}" class="med-status-card {% if current_filter == 'completed' %}active{% endif %} card-completed-med">
+        <i class="fa-solid fa-flag-checkered"></i>
+        <span class="med-status-count">{{ completed_count }}</span>
+        <span class="med-status-label">Completed</span>
+    </a>
+    <a href="{{ url_for('medications.index', status='discontinued') }}" class="med-status-card {% if current_filter == 'discontinued' %}active{% endif %} card-disc-med">
+        <i class="fa-solid fa-circle-xmark"></i>
+        <span class="med-status-count">{{ discontinued_count }}</span>
+        <span class="med-status-label">Discontinued</span>
+    </a>
+    <a href="{{ url_for('medications.index', status='all') }}" class="med-status-card {% if current_filter == 'all' %}active{% endif %}">
+        <i class="fa-solid fa-layer-group"></i>
+        <span class="med-status-count">{{ active_count + completed_count + discontinued_count }}</span>
+        <span class="med-status-label">All</span>
+    </a>
+</div>
+
+<!-- Medications List -->
+<div class="medications-list">
+    {% if medications %}
+        {% for med in medications %}
+        <div class="med-card">
+            <div class="med-card-left">
+                <div class="med-pill-icon {% if med.status == 'active' %}active{% elif med.status == 'completed' %}completed{% else %}discontinued{% endif %}">
+                    <i class="fa-solid fa-capsules"></i>
+                </div>
+                <div class="med-card-info">
+                    <h3 class="med-card-name">{{ med.medicine_name }}</h3>
+                    <div class="med-card-details">
+                        <span><i class="fa-solid fa-prescription"></i> {{ med.dosage }}</span>
+                        <span><i class="fa-solid fa-clock"></i> {{ med.frequency }}</span>
+                        {% if med.prescribed_by %}
+                        <span><i class="fa-solid fa-user-doctor"></i> {{ med.prescribed_by }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="med-card-dates">
+                        <span><i class="fa-regular fa-calendar"></i> {{ med.start_date.strftime('%b %d, %Y') }}</span>
+                        {% if med.end_date %}
+                        <span>→ {{ med.end_date.strftime('%b %d, %Y') }}</span>
+                        {% else %}
+                        <span>→ Ongoing</span>
+                        {% endif %}
+                    </div>
+                    {% if med.instructions %}
+                    <p class="med-card-instructions"><i class="fa-solid fa-circle-info"></i> {{ med.instructions }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="med-card-right">
+                <span class="status-badge status-{{ med.status }}">{{ med.status.title() }}</span>
+                <div class="med-card-actions">
+                    {% if med.status == 'active' %}
+                    <form method="POST" action="{{ url_for('medications.update_status', med_id=med.id) }}" class="inline-form">
+                        <input type="hidden" name="status" value="completed">
+                        <button type="submit" class="btn btn-sm btn-success" title="Mark Complete"><i class="fa-solid fa-check"></i></button>
+                    </form>
+                    {% endif %}
+                    <button class="btn-icon" onclick="openEditMedModal({{ med.id }}, '{{ med.medicine_name }}', '{{ med.start_date }}', '{{ med.end_date or '' }}', '{{ med.dosage }}', '{{ med.frequency }}', `{{ med.instructions or '' }}`, '{{ med.status }}', '{{ med.prescribed_by or '' }}')">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <form method="POST" action="{{ url_for('medications.delete_medication', med_id=med.id) }}" class="inline-form" onsubmit="return confirm('Delete this medication?')">
+                        <button type="submit" class="btn-icon danger"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <i class="fa-solid fa-capsules"></i>
+            <h3>No medications recorded</h3>
+            <p>Add your prescribed medications to keep track of your treatment.</p>
+            <button class="btn btn-primary" onclick="openModal('addMedModal')">
+                <i class="fa-solid fa-plus"></i> Add Medication
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Add Medication Modal -->
+<div class="modal-overlay" id="addMedModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-plus-circle"></i> Add Medication</h2>
+            <button class="modal-close" onclick="closeModal('addMedModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="POST" action="{{ url_for('medications.add_medication') }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="medicine_name">Medicine Name *</label>
+                    <input type="text" id="medicine_name" name="medicine_name" placeholder="e.g., Liv-52, Ursodeoxycholic Acid" required>
+                </div>
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label for="start_date">Start Date *</label>
+                        <input type="date" id="start_date" name="start_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="end_date">End Date</label>
+                        <input type="date" id="end_date" name="end_date">
+                    </div>
+                    <div class="form-group">
+                        <label for="status">Status</label>
+                        <select id="status" name="status">
+                            {% for key, label in statuses %}
+                            <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dosage">Dosage *</label>
+                        <input type="text" id="dosage" name="dosage" placeholder="e.g., 500mg, 2 tablets" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="frequency">Frequency *</label>
+                        <input type="text" id="frequency" name="frequency" placeholder="e.g., Twice daily, After meals" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="prescribed_by">Prescribed By</label>
+                    <input type="text" id="prescribed_by" name="prescribed_by" placeholder="Doctor or clinic name">
+                </div>
+                <div class="form-group">
+                    <label for="instructions">Special Instructions</label>
+                    <textarea id="instructions" name="instructions" rows="2" placeholder="Any special instructions..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addMedModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Medication</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Medication Modal -->
+<div class="modal-overlay" id="editMedModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-pen"></i> Edit Medication</h2>
+            <button class="modal-close" onclick="closeModal('editMedModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="POST" id="editMedForm">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Medicine Name *</label>
+                    <input type="text" id="edit_medicine_name" name="medicine_name" required>
+                </div>
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label>Start Date *</label>
+                        <input type="date" id="edit_start_date" name="start_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>End Date</label>
+                        <input type="date" id="edit_end_date" name="end_date">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="edit_med_status" name="status">
+                            {% for key, label in statuses %}
+                            <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Dosage *</label>
+                        <input type="text" id="edit_dosage" name="dosage" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Frequency *</label>
+                        <input type="text" id="edit_frequency" name="frequency" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Prescribed By</label>
+                    <input type="text" id="edit_prescribed_by" name="prescribed_by">
+                </div>
+                <div class="form-group">
+                    <label>Instructions</label>
+                    <textarea id="edit_instructions" name="instructions" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editMedModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function openEditMedModal(id, name, start, end, dosage, freq, instr, status, prescribed) {
+    document.getElementById('editMedForm').action = '/medications/edit/' + id;
+    document.getElementById('edit_medicine_name').value = name;
+    document.getElementById('edit_start_date').value = start;
+    document.getElementById('edit_end_date').value = end;
+    document.getElementById('edit_dosage').value = dosage;
+    document.getElementById('edit_frequency').value = freq;
+    document.getElementById('edit_instructions').value = instr;
+    document.getElementById('edit_med_status').value = status;
+    document.getElementById('edit_prescribed_by').value = prescribed;
+    openModal('editMedModal');
+}
+document.querySelectorAll('.modal-overlay').forEach(o => {
+    o.addEventListener('click', e => { if (e.target === o) o.classList.remove('active'); });
+});
+</script>
+{% endblock %}

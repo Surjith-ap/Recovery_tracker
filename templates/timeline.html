@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Timeline — Recovery Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Treatment Timeline</h1>
+        <p class="page-subtitle">Chronological record of your recovery journey</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('addEventModal')">
+        <i class="fa-solid fa-plus"></i> Add Event
+    </button>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+    <a href="{{ url_for('timeline.index', type='all') }}" class="filter-chip {% if current_filter == 'all' %}active{% endif %}">All</a>
+    {% for type_key, type_label in activity_types %}
+    <a href="{{ url_for('timeline.index', type=type_key) }}" class="filter-chip {% if current_filter == type_key %}active{% endif %}">
+        {{ type_label }}
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Timeline -->
+<div class="timeline-container">
+    {% if events %}
+        {% for event in events %}
+        <div class="timeline-item" data-aos="fade-up">
+            <div class="timeline-marker" style="background: {{ activity_config.get(event.activity_type, {}).get('color', '#6C5CE7') }}">
+                <i class="fa-solid {{ activity_config.get(event.activity_type, {}).get('icon', 'fa-circle') }}"></i>
+            </div>
+            <div class="timeline-card" style="border-left: 4px solid {{ activity_config.get(event.activity_type, {}).get('color', '#6C5CE7') }}">
+                <div class="timeline-card-header">
+                    <div>
+                        <span class="timeline-type-badge" style="background: {{ activity_config.get(event.activity_type, {}).get('bg', '#F4ECF7') }}; color: {{ activity_config.get(event.activity_type, {}).get('color', '#6C5CE7') }}">
+                            {{ event.activity_type.replace('_', ' ').title() }}
+                        </span>
+                        <h3 class="timeline-title">{{ event.title }}</h3>
+                    </div>
+                    <div class="timeline-actions">
+                        <button class="btn-icon" onclick="openEditEventModal({{ event.id }}, '{{ event.event_date }}', '{{ event.activity_type }}', '{{ event.title }}', `{{ event.description or '' }}`)">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <form method="POST" action="{{ url_for('timeline.delete_event', event_id=event.id) }}" class="inline-form" onsubmit="return confirm('Delete this event?')">
+                            <button type="submit" class="btn-icon danger"><i class="fa-solid fa-trash"></i></button>
+                        </form>
+                    </div>
+                </div>
+                <p class="timeline-date"><i class="fa-regular fa-calendar"></i> {{ event.event_date.strftime('%B %d, %Y') }}</p>
+                {% if event.description %}
+                <p class="timeline-desc">{{ event.description }}</p>
+                {% endif %}
+                {% if event.attachment_path %}
+                <div class="timeline-attachment">
+                    <a href="{{ url_for('static', filename='uploads/' + event.attachment_path) }}" target="_blank" class="attachment-link">
+                        <i class="fa-solid fa-paperclip"></i> View Attachment
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <i class="fa-solid fa-timeline"></i>
+            <h3>No timeline events yet</h3>
+            <p>Start recording your recovery journey by adding your first event.</p>
+            <button class="btn btn-primary" onclick="openModal('addEventModal')">
+                <i class="fa-solid fa-plus"></i> Add First Event
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Add Event Modal -->
+<div class="modal-overlay" id="addEventModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-plus-circle"></i> Add Timeline Event</h2>
+            <button class="modal-close" onclick="closeModal('addEventModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="POST" action="{{ url_for('timeline.add_event') }}" enctype="multipart/form-data">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="event_date">Date *</label>
+                        <input type="date" id="event_date" name="event_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="activity_type">Activity Type *</label>
+                        <select id="activity_type" name="activity_type" required>
+                            {% for type_key, type_label in activity_types %}
+                            <option value="{{ type_key }}">{{ type_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="title">Title *</label>
+                    <input type="text" id="title" name="title" placeholder="e.g., Blood test at City Hospital" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" rows="3" placeholder="Add details about this event..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="attachment">Attachment</label>
+                    <input type="file" id="attachment" name="attachment" accept=".pdf,.jpg,.jpeg,.png">
+                    <small class="form-hint">Supported: PDF, JPG, PNG (max 16MB)</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addEventModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Event</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Event Modal -->
+<div class="modal-overlay" id="editEventModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-pen"></i> Edit Event</h2>
+            <button class="modal-close" onclick="closeModal('editEventModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="POST" id="editEventForm" enctype="multipart/form-data">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date *</label>
+                        <input type="date" id="edit_event_date" name="event_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Activity Type *</label>
+                        <select id="edit_activity_type" name="activity_type" required>
+                            {% for type_key, type_label in activity_types %}
+                            <option value="{{ type_key }}">{{ type_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Title *</label>
+                    <input type="text" id="edit_title" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="edit_description" name="description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Replace Attachment</label>
+                    <input type="file" name="attachment" accept=".pdf,.jpg,.jpeg,.png">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editEventModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(id) {
+    document.getElementById(id).classList.add('active');
+}
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+function openEditEventModal(id, date, type, title, desc) {
+    document.getElementById('editEventForm').action = '/timeline/edit/' + id;
+    document.getElementById('edit_event_date').value = date;
+    document.getElementById('edit_activity_type').value = type;
+    document.getElementById('edit_title').value = title;
+    document.getElementById('edit_description').value = desc;
+    openModal('editEventModal');
+}
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.classList.remove('active');
+    });
+});
+</script>
+{% endblock %}

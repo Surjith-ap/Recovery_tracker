@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block title %}Recovery Journal — Recovery Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Recovery Journal</h1>
+        <p class="page-subtitle">Record your daily symptoms, energy, and recovery observations</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('addJournalModal')">
+        <i class="fa-solid fa-plus"></i> New Entry
+    </button>
+</div>
+
+<!-- Today's Quick Entry -->
+{% if not today_entry %}
+<div class="today-prompt">
+    <div class="today-prompt-icon"><i class="fa-solid fa-sun"></i></div>
+    <div>
+        <h3>How are you feeling today?</h3>
+        <p>You haven't logged today's entry yet. Take a moment to record how you're doing.</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('addJournalModal')">Log Today</button>
+</div>
+{% endif %}
+
+<!-- Journal Entries -->
+<div class="journal-entries">
+    {% if entries %}
+        {% for entry in entries %}
+        <div class="journal-card">
+            <div class="journal-card-date">
+                <span class="jc-day">{{ entry.entry_date.strftime('%d') }}</span>
+                <span class="jc-month">{{ entry.entry_date.strftime('%b') }}</span>
+                <span class="jc-year">{{ entry.entry_date.strftime('%Y') }}</span>
+            </div>
+            <div class="journal-card-body">
+                <div class="journal-card-header">
+                    <h3>{{ entry.entry_date.strftime('%A, %B %d, %Y') }}</h3>
+                    <div class="journal-card-actions">
+                        <button class="btn-icon" onclick="openEditJournalModal({{ entry.id }}, '{{ entry.entry_date }}', `{{ entry.symptoms or '' }}`, {{ entry.energy_level or 'null' }}, {{ entry.appetite or 'null' }}, {{ entry.sleep_quality or 'null' }}, {{ entry.mood or 'null' }}, `{{ entry.observations or '' }}`, `{{ entry.recovery_notes or '' }}`)">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <form method="POST" action="{{ url_for('journal.delete_entry', entry_id=entry.id) }}" class="inline-form" onsubmit="return confirm('Delete this entry?')">
+                            <button type="submit" class="btn-icon danger"><i class="fa-solid fa-trash"></i></button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Metrics -->
+                <div class="journal-metrics-grid">
+                    {% if entry.energy_level %}
+                    <div class="journal-metric">
+                        <span class="metric-icon energy"><i class="fa-solid fa-bolt"></i></span>
+                        <div class="metric-info">
+                            <span class="metric-label">Energy</span>
+                            <div class="metric-bar-container">
+                                <div class="metric-bar energy" style="width: {{ entry.energy_level * 10 }}%"></div>
+                            </div>
+                            <span class="metric-val">{{ entry.energy_level }}/10</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if entry.appetite %}
+                    <div class="journal-metric">
+                        <span class="metric-icon appetite"><i class="fa-solid fa-utensils"></i></span>
+                        <div class="metric-info">
+                            <span class="metric-label">Appetite</span>
+                            <div class="metric-bar-container">
+                                <div class="metric-bar appetite" style="width: {{ entry.appetite * 10 }}%"></div>
+                            </div>
+                            <span class="metric-val">{{ entry.appetite }}/10</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if entry.sleep_quality %}
+                    <div class="journal-metric">
+                        <span class="metric-icon sleep"><i class="fa-solid fa-moon"></i></span>
+                        <div class="metric-info">
+                            <span class="metric-label">Sleep</span>
+                            <div class="metric-bar-container">
+                                <div class="metric-bar sleep" style="width: {{ entry.sleep_quality * 10 }}%"></div>
+                            </div>
+                            <span class="metric-val">{{ entry.sleep_quality }}/10</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if entry.mood %}
+                    <div class="journal-metric">
+                        <span class="metric-icon mood"><i class="fa-solid fa-face-smile"></i></span>
+                        <div class="metric-info">
+                            <span class="metric-label">Mood</span>
+                            <div class="metric-bar-container">
+                                <div class="metric-bar mood" style="width: {{ entry.mood * 10 }}%"></div>
+                            </div>
+                            <span class="metric-val">{{ entry.mood }}/10</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if entry.symptoms %}
+                <div class="journal-section">
+                    <h4><i class="fa-solid fa-notes-medical"></i> Symptoms</h4>
+                    <p>{{ entry.symptoms }}</p>
+                </div>
+                {% endif %}
+                {% if entry.observations %}
+                <div class="journal-section">
+                    <h4><i class="fa-solid fa-eye"></i> Observations</h4>
+                    <p>{{ entry.observations }}</p>
+                </div>
+                {% endif %}
+                {% if entry.recovery_notes %}
+                <div class="journal-section">
+                    <h4><i class="fa-solid fa-heart-pulse"></i> Recovery Notes</h4>
+                    <p>{{ entry.recovery_notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <i class="fa-solid fa-book-medical"></i>
+            <h3>No journal entries yet</h3>
+            <p>Start documenting your recovery by adding your first daily entry.</p>
+            <button class="btn btn-primary" onclick="openModal('addJournalModal')">
+                <i class="fa-solid fa-plus"></i> Write First Entry
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Add Journal Modal -->
+<div class="modal-overlay" id="addJournalModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-plus-circle"></i> New Journal Entry</h2>
+            <button class="modal-close" onclick="closeModal('addJournalModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="POST" action="{{ url_for('journal.add_entry') }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="entry_date">Date *</label>
+                    <input type="date" id="entry_date" name="entry_date" required>
+                </div>
+                <div class="form-row form-row-4">
+                    <div class="form-group">
+                        <label for="energy_level">Energy (1-10)</label>
+                        <input type="range" id="energy_level" name="energy_level" min="1" max="10" value="5" oninput="this.nextElementSibling.textContent=this.value">
+                        <output>5</output>
+                    </div>
+                    <div class="form-group">
+                        <label for="appetite">Appetite (1-10)</label>
+                        <input type="range" id="appetite" name="appetite" min="1" max="10" value="5" oninput="this.nextElementSibling.textContent=this.value">
+                        <output>5</output>
+                    </div>
+                    <div class="form-group">
+                        <label for="sleep_quality">Sleep (1-10)</label>
+                        <input type="range" id="sleep_quality" name="sleep_quality" min="1" max="10" value="5" oninput="this.nextElementSibling.textContent=this.value">
+                        <output>5</output>
+                    </div>
+                    <div class="form-group">
+                        <label for="mood">Mood (1-10)</label>
+                        <input type="range" id="mood" name="mood" min="1" max="10" value="5" oninput="this.nextElementSibling.textContent=this.value">
+                        <output>5</output>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="symptoms">Symptoms</label>
+                    <textarea id="symptoms" name="symptoms" rows="3" placeholder="Describe any symptoms you're experiencing..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="observations">General Observations</label>
+                    <textarea id="observations" name="observations" rows="2" placeholder="Any observations about your health today..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="recovery_notes">Recovery Notes</label>
+                    <textarea id="recovery_notes" name="recovery_notes" rows="2" placeholder="Notes about your recovery progress..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addJournalModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Entry</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Journal Modal -->
+<div class="modal-overlay" id="editJournalModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-pen"></i> Edit Journal Entry</h2>
+            <button class="modal-close" onclick="closeModal('editJournalModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="POST" action="{{ url_for('journal.add_entry') }}" id="editJournalForm">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="edit_entry_date" name="entry_date" required>
+                </div>
+                <div class="form-row form-row-4">
+                    <div class="form-group">
+                        <label>Energy</label>
+                        <input type="range" id="edit_energy" name="energy_level" min="1" max="10" value="5" oninput="this.nextElementSibling.textContent=this.value">
+                        <output>5</output>
+                    </div>
+                    <div class="form-group">
+                        <label>Appetite</label>
+                        <input type="range" id="edit_appetite" name="appetite" min="1" max="10" value="5" oninput="this.nextElementSibling.textContent=this.value">
+                        <output>5</output>
+                    </div>
+                    <div class="form-group">
+                        <label>Sleep</label>
+                        <input type="range" id="edit_sleep" name="sleep_quality" min="1" max="10" value="5" oninput="this.nextElementSibling.textContent=this.value">
+                        <output>5</output>
+                    </div>
+                    <div class="form-group">
+                        <label>Mood</label>
+                        <input type="range" id="edit_mood" name="mood" min="1" max="10" value="5" oninput="this.nextElementSibling.textContent=this.value">
+                        <output>5</output>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Symptoms</label>
+                    <textarea id="edit_symptoms" name="symptoms" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Observations</label>
+                    <textarea id="edit_observations" name="observations" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Recovery Notes</label>
+                    <textarea id="edit_recovery_notes" name="recovery_notes" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editJournalModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function openEditJournalModal(id, date, symptoms, energy, appetite, sleep, mood, obs, notes) {
+    document.getElementById('edit_entry_date').value = date;
+    const setRange = (elId, val) => {
+        const el = document.getElementById(elId);
+        if (val !== null) { el.value = val; el.nextElementSibling.textContent = val; }
+    };
+    setRange('edit_energy', energy);
+    setRange('edit_appetite', appetite);
+    setRange('edit_sleep', sleep);
+    setRange('edit_mood', mood);
+    document.getElementById('edit_symptoms').value = symptoms;
+    document.getElementById('edit_observations').value = obs;
+    document.getElementById('edit_recovery_notes').value = notes;
+    openModal('editJournalModal');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(o => {
+    o.addEventListener('click', e => { if (e.target === o) o.classList.remove('active'); });
+});
+</script>
+{% endblock %}
