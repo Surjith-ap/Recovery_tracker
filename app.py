@@ -7,6 +7,11 @@ from models.db import init_db
 import os
 
 
+from dotenv import load_dotenv
+
+load_dotenv()   
+
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
