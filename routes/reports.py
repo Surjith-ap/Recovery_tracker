@@ -81,9 +81,10 @@ def upload_report():
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
         ext = filename.rsplit('.', 1)[1].lower()
         safe_name = timestamp + filename
-        filepath = os.path.join(Config.UPLOAD_FOLDER, safe_name)
-        file.save(filepath)
-        file_size = os.path.getsize(filepath)
+        
+        # Upload using storage util
+        from utils.storage import upload_file
+        file_size = upload_file(file, safe_name)
 
         report = Report(
             title=title,
@@ -107,6 +108,12 @@ def upload_report():
 def download_report(report_id):
     """Download a report file"""
     report = Report.query.get_or_404(report_id)
+    
+    from utils.storage import get_file_url
+    url = get_file_url(report.file_path)
+    if url:
+        return redirect(url)
+        
     return send_from_directory(
         Config.UPLOAD_FOLDER,
         report.file_path,
@@ -119,6 +126,12 @@ def download_report(report_id):
 def view_report(report_id):
     """View/preview a report file inline"""
     report = Report.query.get_or_404(report_id)
+    
+    from utils.storage import get_file_url
+    url = get_file_url(report.file_path)
+    if url:
+        return redirect(url)
+        
     return send_from_directory(
         Config.UPLOAD_FOLDER,
         report.file_path,
@@ -131,9 +144,8 @@ def delete_report(report_id):
     report = Report.query.get_or_404(report_id)
 
     # Delete the physical file
-    filepath = os.path.join(Config.UPLOAD_FOLDER, report.file_path)
-    if os.path.exists(filepath):
-        os.remove(filepath)
+    from utils.storage import delete_file
+    delete_file(report.file_path)
 
     db.session.delete(report)
     db.session.commit()

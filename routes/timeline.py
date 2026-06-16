@@ -55,9 +55,11 @@ def add_event():
         if file and file.filename and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
-            filename = timestamp + filename
-            file.save(os.path.join(Config.UPLOAD_FOLDER, filename))
-            attachment_path = filename
+            safe_name = timestamp + filename
+            
+            from utils.storage import upload_file
+            upload_file(file, safe_name)
+            attachment_path = safe_name
 
     event = TimelineEvent(
         event_date=datetime.strptime(event_date, '%Y-%m-%d').date(),
@@ -79,9 +81,8 @@ def delete_event(event_id):
 
     # Delete attachment file if exists
     if event.attachment_path:
-        filepath = os.path.join(Config.UPLOAD_FOLDER, event.attachment_path)
-        if os.path.exists(filepath):
-            os.remove(filepath)
+        from utils.storage import delete_file
+        delete_file(event.attachment_path)
 
     db.session.delete(event)
     db.session.commit()
@@ -104,15 +105,26 @@ def edit_event(event_id):
         if file and file.filename and allowed_file(file.filename):
             # Remove old attachment
             if event.attachment_path:
-                old_path = os.path.join(Config.UPLOAD_FOLDER, event.attachment_path)
-                if os.path.exists(old_path):
-                    os.remove(old_path)
+                from utils.storage import delete_file
+                delete_file(event.attachment_path)
+            
             filename = secure_filename(file.filename)
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
-            filename = timestamp + filename
-            file.save(os.path.join(Config.UPLOAD_FOLDER, filename))
-            event.attachment_path = filename
+            safe_name = timestamp + filename
+            
+            from utils.storage import upload_file
+            upload_file(file, safe_name)
+            event.attachment_path = safe_name
 
     db.session.commit()
     flash('Timeline event updated.', 'success')
     return redirect(url_for('timeline.index'))
+
+@timeline_bp.route('/download/<path:filename>')
+def download_attachment(filename):
+    from utils.storage import get_file_url
+    url = get_file_url(filename)
+    if url:
+        return redirect(url)
+    from flask import send_from_directory
+    return send_from_directory(Config.UPLOAD_FOLDER, filename)

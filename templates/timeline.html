@@ -53,7 +53,7 @@
                 {% endif %}
                 {% if event.attachment_path %}
                 <div class="timeline-attachment">
-                    <a href="{{ url_for('static', filename='uploads/' + event.attachment_path) }}" target="_blank" class="attachment-link">
+                    <a href="{{ url_for('timeline.download_attachment', filename=event.attachment_path) }}" target="_blank" class="attachment-link">
                         <i class="fa-solid fa-paperclip"></i> View Attachment
                     </a>
                 </div>
