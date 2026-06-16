@@ -20,7 +20,7 @@ class Config:
     ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png'}
 
     # Diagnosis date - update this to your actual diagnosis date
-    DIAGNOSIS_DATE = '2026-05-31'
+    DIAGNOSIS_DATE = '2026-05-30'
 
     # Admin credentials — set these in your .env file
     # Generate hash: python setup_password.py
