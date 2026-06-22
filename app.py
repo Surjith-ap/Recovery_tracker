@@ -40,6 +40,20 @@ def create_app():
         public_endpoints = {'auth.login', 'static'}
         if not current_user.is_authenticated and request.endpoint not in public_endpoints:
             return redirect(url_for('auth.login', next=request.path))
+        
+    # ── Cache control headers ──────────────────────────────────────────────────
+    @app.after_request
+    def set_cache_headers(response):
+        """Prevent caching of authenticated pages to avoid browser history issues"""
+        if current_user.is_authenticated:
+            # Don't cache authenticated pages
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+        else:
+            # Cache public pages for a short time
+            response.headers['Cache-Control'] = 'public, max-age=3600'
+        return response
 
     # ── Register blueprints ──────────────────────────────────────────────────
     from routes.auth import auth_bp
